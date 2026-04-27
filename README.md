@@ -113,7 +113,7 @@ yarn test:api
   - `GET http://localhost/api/deployments`
   - `POST http://localhost/api/deployments`
     - **Git (JSON)**: `{ "sourceType": "git", "gitUrl": "https://example.com/repo.git" }`
-    - **Example repo for Git URL testing**, paste into the dashboard **GitHub** field or use the same URL in JSON: **`https://github.com/Tosinkoa/brimble-ui.git`** — small static/HTML/CSS-style project ([`Tosinkoa/brimble-ui`](https://github.com/Tosinkoa/brimble-ui)) suitable for exercising clone + build in the pipeline.
+    - **Example repo for Git URL testing**, paste into the dashboard **GitHub** field or use the same URL in JSON: **`https://github.com/Tosinkoa/sample-node-ui.git`** — tiny Node.js app with a simple UI ([`Tosinkoa/sample-node-ui`](https://github.com/Tosinkoa/sample-node-ui)), intended as a sample deploy target for clone + build.
     - **Bundled sample (JSON)**: `{ "sourceType": "sample" }`, Railpack builds **only** `apps/sample-app` under the monorepo root (`SAMPLE_APP_SOURCE_PATH`, default `/repo` in Compose), so the build context stays small (not the whole workspace + root `node_modules`). Stored as `sourceType: "upload"`.
     - **Upload (multipart)**, pick one:
       - **Project folder (primary):** field **`files`**, one part per file; each part’s filename is the relative path (e.g. `package.json`, `src/index.ts`). Total size **≤ 25MB**. (The UI uses a directory picker.)
@@ -168,7 +168,7 @@ From a clean environment:
 
 1. `docker compose up --build`
 2. Open the UI at `http://localhost`
-3. Create a deployment: **Git URL** (e.g. `https://github.com/Tosinkoa/brimble-ui.git` for GitHub URL testing) **or** upload a **project folder** (or a `.zip` fallback; see below)
+3. Create a deployment: **Git URL** (e.g. `https://github.com/Tosinkoa/sample-node-ui.git` for GitHub URL testing) **or** upload a **project folder** (or a `.zip` fallback; see below)
 4. Confirm status transitions: `pending → building → deploying → running`
 5. Watch logs stream live while building (SSE) and confirm scrollback persists after completion
 6. Click the live URL and confirm:
