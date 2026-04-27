@@ -91,8 +91,8 @@ The UI is a single-page dashboard: list/create deployments and stream logs over 
   - `GET http://localhost/api/deployments/:id/logs/stream` (**SSE**; replays persisted logs, then streams new ones)
     - Example: `curl -N http://localhost/api/deployments/<uuid>/logs/stream`
 - **Live deployments (through Caddy)**:
-  - `http://localhost/apps/<deploymentId>/` (app)
-  - `http://localhost/apps/<deploymentId>/health` (health)
+  - `http://<deploymentId>.localhost/` (app)
+  - `http://<deploymentId>.localhost/health` (health)
 - **Direct service ports (debugging only)**:
   - API: `http://localhost:3000/api/health`
   - Frontend preview: `http://localhost:4173`
@@ -138,7 +138,7 @@ From a clean environment:
 6. Click the live URL and confirm:
    - `/` shows the deployed app
    - `/health` returns 200
-7. Create a second deployment and confirm both are routable under `/apps/<id>`
+7. Create a second deployment and confirm both are routable under `<id>.localhost`
 
 **Upload a project folder (recommended):** choose a directory whose **top level** contains Railpack trigger files (e.g. `package.json`). The browser sends one multipart part per file. In the **UI**, you pick a small **stack** card (Node, Python, Go, Static, Other); we then **drop common junk client-side**—`node_modules`, `.git`, `dist`, build caches, and profile-specific noise—so uploads stay small (similar in spirit to a `.dockerignore` / CI checkout, not a security boundary).
 

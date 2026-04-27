@@ -1,5 +1,8 @@
 import { mkdir, rm } from "node:fs/promises";
+import http from "node:http";
+import https from "node:https";
 import path from "node:path";
+import { URL } from "node:url";
 
 import type { DeploymentLogLive } from "../ports/deployment-log-live.js";
 import type { DeploymentLogsRepository } from "../ports/deployment-logs-repository.js";
@@ -28,9 +31,9 @@ async function waitForHttpOk(input: {
 
   while (Date.now() - start < input.timeoutMs) {
     try {
-      const res = await fetch(input.url, { method: "GET", headers: input.headers });
-      if (res.ok) return;
-      lastError = `HTTP ${res.status}`;
+      const status = await getStatusCode({ url: input.url, headers: input.headers });
+      if (status >= 200 && status < 300) return;
+      lastError = `HTTP ${status}`;
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
     }
@@ -38,6 +41,32 @@ async function waitForHttpOk(input: {
   }
 
   throw new Error(`Timed out waiting for ${input.url} (${lastError ?? "no response"})`);
+}
+
+function getStatusCode(input: {
+  url: string;
+  headers?: Record<string, string>;
+}): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(input.url);
+    const lib = u.protocol === "https:" ? https : http;
+    const req = lib.request(
+      {
+        protocol: u.protocol,
+        hostname: u.hostname,
+        port: u.port ? Number(u.port) : undefined,
+        path: `${u.pathname}${u.search}`,
+        method: "GET",
+        headers: input.headers,
+      },
+      (res) => {
+        res.resume(); // drain
+        resolve(res.statusCode ?? 0);
+      },
+    );
+    req.once("error", reject);
+    req.end();
+  });
 }
 
 export async function runFakePipeline(deps: {
@@ -214,8 +243,13 @@ export async function runFakePipeline(deps: {
 
     await append("Waiting for ingress health…");
     await waitForHttpOk({
-      url: `http://caddy/health`,
+      // Call Caddy by service name (works in compose); add Host header so the host-based
+      // route matches. Using the upstream directly avoids origin/host enforcement edge cases.
+      url: `http://caddy:80/health`,
+      // Through Caddy, which routes by Host.
       headers: { Host: host },
+      // If this request gets routed to the *wrong* upstream (platform frontend),
+      // we'll see non-200s (often 403). Keep retrying until it becomes 200.
       timeoutMs: 45_000,
       intervalMs: 750,
     });

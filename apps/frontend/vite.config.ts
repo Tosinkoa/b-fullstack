@@ -21,6 +21,8 @@ export default defineConfig({
     },
   },
   server: {
+    // Caddy routes deployments by Host (e.g. `<id>.localhost`) and proxies them to this dev server.
+    allowedHosts: true,
     proxy: {
       "/api": {
         target: devApiProxy,
@@ -30,6 +32,7 @@ export default defineConfig({
   },
   // `vite preview` does not use `server.proxy`; it needs `preview.proxy` or /api 404s / misproxies in the container.
   preview: {
+    allowedHosts: true,
     proxy: {
       "/api": {
         target: previewApiProxy,
