@@ -88,6 +88,20 @@ describe("HTTP API (in-memory repos)", () => {
     expect(json.deployment.sourceType).toBe("git");
   });
 
+  it("POST /api/deployments sample JSON creates upload-marked bundled demo (pending)", async () => {
+    const res = await fetch(`${t.getBaseUrl()}/api/deployments`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sourceType: "sample" }),
+    });
+
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.deployment.status).toBe("pending");
+    expect(json.deployment.sourceType).toBe("upload");
+    expect(json.deployment.sourceUrl).toContain("sample-app");
+  });
+
   it("GET /api/deployments lists deployments", async () => {
     const res = await fetch(`${t.getBaseUrl()}/api/deployments`);
     expect(res.status).toBe(200);

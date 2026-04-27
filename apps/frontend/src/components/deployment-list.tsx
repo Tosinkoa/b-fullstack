@@ -8,12 +8,7 @@ import {
   IconAlertTriangle,
 } from "@tabler/icons-react"
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
@@ -37,10 +32,10 @@ export function DeploymentList({
   className,
 }: Props) {
   return (
-    <Card className={cn("flex flex-col", className)}>
-      <CardHeader className="border-b border-border/60 pb-3 shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle>All deployments</CardTitle>
+    <Card className={cn("flex min-w-0 flex-col", className)}>
+      <CardHeader className="shrink-0 border-b border-border/60 pb-3">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <CardTitle className="min-w-0 truncate">All deployments</CardTitle>
           {!isLoading && !isError && (
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
               {deployments.length}
@@ -49,12 +44,15 @@ export function DeploymentList({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 min-h-0 flex flex-col p-0">
+      <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
         {isLoading ? (
           <div className="flex flex-col gap-2 p-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
-                <Skeleton className="h-5 w-5 rounded-full shrink-0" />
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg border border-border/50 p-3"
+              >
+                <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
                 <div className="flex-1 space-y-1.5">
                   <Skeleton className="h-3 w-24" />
                   <Skeleton className="h-2.5 w-40" />
@@ -70,20 +68,24 @@ export function DeploymentList({
             <p className="text-sm font-medium text-muted-foreground">
               Couldn&apos;t load deployments
             </p>
-            <p className="text-xs text-muted-foreground/60">See toast for details</p>
+            <p className="text-xs text-muted-foreground/60">
+              See toast for details
+            </p>
           </div>
         ) : deployments.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
               <IconInbox className="h-5 w-5 text-muted-foreground/60" />
             </div>
-            <p className="text-sm font-medium text-muted-foreground">No deployments yet</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              No deployments yet
+            </p>
             <p className="text-xs text-muted-foreground/60">
               Create one above to get started
             </p>
           </div>
         ) : (
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea className="min-h-0 min-w-0 flex-1">
             <ul className="divide-y divide-border/60">
               {deployments.map((d) => {
                 const active = d.id === selectedId
@@ -91,24 +93,24 @@ export function DeploymentList({
                   <li key={d.id}>
                     <button
                       className={cn(
-                        "group flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset",
+                        "group flex w-full max-w-full min-w-0 items-center gap-3 px-4 py-3 text-left text-sm transition-all",
+                        "focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset",
                         "hover:bg-muted/60",
-                        active && "bg-muted/80",
+                        active && "bg-muted/80"
                       )}
                       onClick={() => onSelect(d.id)}
                       type="button"
                     >
                       <StatusDot status={d.status} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="flex min-w-0 items-center gap-2">
                           <StatusLabel status={d.status} />
-                          <span className="rounded border border-border px-1 py-px font-mono text-[10px] text-muted-foreground">
+                          <span className="shrink-0 rounded border border-border px-1 py-px font-mono text-[10px] text-muted-foreground">
                             {d.sourceType}
                           </span>
                           {d.liveUrl && (
                             <a
-                              className="ml-auto flex items-center gap-0.5 text-[10px] text-primary hover:underline"
+                              className="ml-auto flex shrink-0 items-center gap-0.5 text-[10px] text-primary hover:underline"
                               href={d.liveUrl}
                               onClick={(e) => e.stopPropagation()}
                               rel="noreferrer"
@@ -119,8 +121,11 @@ export function DeploymentList({
                             </a>
                           )}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2">
-                          <p className="truncate font-mono text-[11px] text-muted-foreground">
+                        <div className="mt-0.5 flex min-w-0 items-center gap-2">
+                          <p
+                            className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground"
+                            title={d.id}
+                          >
                             {d.id}
                           </p>
                           <span className="shrink-0 text-[10px] text-muted-foreground/40">
@@ -128,7 +133,10 @@ export function DeploymentList({
                           </span>
                         </div>
                         {d.imageTag && (
-                          <p className="truncate font-mono text-[10px] text-muted-foreground/60">
+                          <p
+                            className="truncate font-mono text-[10px] text-muted-foreground/60"
+                            title={d.imageTag}
+                          >
                             {d.imageTag}
                           </p>
                         )}
@@ -195,16 +203,41 @@ function relativeTime(iso: string): string {
 }
 
 function StatusLabel({ status }: { status: DeploymentRecord["status"] }) {
-  const configs: Record<DeploymentRecord["status"], { label: string; className: string; icon?: React.ComponentType<{ className?: string }> }> = {
-    pending: { label: "Pending", className: "text-amber-600 dark:text-amber-400" },
-    building: { label: "Building", className: "text-blue-600 dark:text-blue-400" },
-    deploying: { label: "Deploying", className: "text-violet-600 dark:text-violet-400" },
-    running: { label: "Running", className: "text-emerald-600 dark:text-emerald-400", icon: IconCircleCheck },
+  const configs: Record<
+    DeploymentRecord["status"],
+    {
+      label: string
+      className: string
+      icon?: React.ComponentType<{ className?: string }>
+    }
+  > = {
+    pending: {
+      label: "Pending",
+      className: "text-amber-600 dark:text-amber-400",
+    },
+    building: {
+      label: "Building",
+      className: "text-blue-600 dark:text-blue-400",
+    },
+    deploying: {
+      label: "Deploying",
+      className: "text-violet-600 dark:text-violet-400",
+    },
+    running: {
+      label: "Running",
+      className: "text-emerald-600 dark:text-emerald-400",
+      icon: IconCircleCheck,
+    },
     failed: { label: "Failed", className: "text-destructive" },
   }
   const { label, className, icon: Icon } = configs[status]
   return (
-    <span className={cn("flex items-center gap-1 text-xs font-medium", className)}>
+    <span
+      className={cn(
+        "flex shrink-0 items-center gap-1 text-xs font-medium",
+        className
+      )}
+    >
       {Icon && <Icon className="h-3 w-3" />}
       {label}
     </span>

@@ -2,7 +2,7 @@
 
 This repo implements the one-page deployment pipeline take-home.
 
-**Note on Dockerfiles vs Railpack**: Railpack is used to build **deployed apps** into container images (no handwritten Dockerfiles for those images). Dockerfiles in this repo are only used to containerize the **platform services** (API/UI) so the whole stack can run with `docker compose up`.
+Railpack is used to build **deployed apps** into container images (no handwritten Dockerfiles for those images). Dockerfiles in this repo are only used to containerize the **platform services** (API/UI) so the whole stack can run with `docker compose up`.
 
 ## Prerequisites
 
@@ -15,10 +15,32 @@ This repo implements the one-page deployment pipeline take-home.
 docker compose up --build
 ```
 
+Same thing via the repo root script:
+
+```bash
+yarn dev
+```
+
+Stop and remove volumes (clean slate):
+
+```bash
+yarn down
+```
+
 Then browse:
 
 - UI (behind Caddy): `http://localhost`
 - API health (behind Caddy): `http://localhost/api/health`
+
+## Repository layout
+
+| Path                 | Role                                                                |
+| -------------------- | ------------------------------------------------------------------- |
+| `apps/frontend/`     | Dashboard SPA (Vite + React + TanStack Query)                       |
+| `apps/api/`          | Express API, pipeline orchestration, SSE logs                       |
+| `apps/sample-app/`   | Default app image for the **git** demo path (Railpack build target) |
+| `infra/caddy/`       | Caddyfile + adapted JSON for `:80`                                  |
+| `docker-compose.yml` | Full stack: Postgres, API, BuildKit, frontend preview, Caddy        |
 
 ## Architecture (high level)
 
@@ -62,8 +84,8 @@ yarn install
 
 **Environment files** (not used by `docker compose`; for local `yarn` only):
 
-- **API** — `apps/api/.env` (copy from `apps/api/.env.example`). You need at least **`DATABASE_URL`** (Postgres reachable from your machine). Optional vars are listed in the example file.
-- **Frontend (Vite)** — `apps/frontend/.env` is optional; copy from `apps/frontend/.env.example` if you want to override `VITE_*` values.
+- **API**, `apps/api/.env` (copy from `apps/api/.env.example`). You need at least **`DATABASE_URL`** (Postgres reachable from your machine). Optional vars are listed in the example file.
+- **Frontend (Vite)**, `apps/frontend/.env` is optional; copy from `apps/frontend/.env.example` if you want to override `VITE_*` values.
 
 The API loads `apps/api/.env` on startup and sets `SAMPLE_APP_SOURCE_PATH` / upload paths to sensible defaults for a local clone.
 
@@ -77,6 +99,12 @@ yarn workspace @app/frontend dev
 
 The UI is a single-page dashboard: list/create deployments and stream logs over **SSE** for the selected deployment.
 
+**API tests** (Vitest; current suite uses in-memory fakes, no Docker Compose required):
+
+```bash
+yarn test:api
+```
+
 ## URLs
 
 - **Ingress (Caddy)**: `http://localhost`
@@ -85,7 +113,8 @@ The UI is a single-page dashboard: list/create deployments and stream logs over 
   - `GET http://localhost/api/deployments`
   - `POST http://localhost/api/deployments`
     - **Git (JSON)**: `{ "sourceType": "git", "gitUrl": "https://example.com/repo.git" }`
-    - **Upload (multipart)** — pick one:
+    - **Bundled sample (JSON)**: `{ "sourceType": "sample" }`, Railpack builds **only** `apps/sample-app` under the monorepo root (`SAMPLE_APP_SOURCE_PATH`, default `/repo` in Compose), so the build context stays small (not the whole workspace + root `node_modules`). Stored as `sourceType: "upload"`.
+    - **Upload (multipart)**, pick one:
       - **Project folder (primary):** field **`files`**, one part per file; each part’s filename is the relative path (e.g. `package.json`, `src/index.ts`). Total size **≤ 25MB**. (The UI uses a directory picker.)
       - **Zip (optional):** field **`file`**, a single **`.zip`** (max **25MB** per file). Root of the archive = app root.
   - `GET http://localhost/api/deployments/:id/logs/stream` (**SSE**; replays persisted logs, then streams new ones)
@@ -111,6 +140,12 @@ Defaults are set in `docker-compose.yml`.
 - `UPLOAD_WORKSPACE_ROOT` (API): where uploaded projects (folder or zip) are written (compose mounts a named volume to persist across restarts)
 - `FORCE_PIPELINE_FAIL` (API test helper): set to `1` to force a failed pipeline
 - `VITE_API_BASE_URL` (frontend build): currently `/api` (relative to the browser origin)
+
+## Troubleshooting
+
+- **Live URL `http://<id>.localhost` does not load**, Most browsers resolve `*.localhost` to loopback. If yours does not, add a hosts entry for that hostname or try another browser; deployment routing depends on the `Host` header matching `<id>.localhost`.
+- **`docker compose` API container exits or cannot run deployments**, The API needs access to `/var/run/docker.sock`. On Linux, your user must be able to talk to Docker (e.g. in the `docker` group); inside Compose the socket is bind-mounted into the API container.
+- **Services stuck unhealthy**, Inspect logs: `docker compose logs -f api db buildkit caddy` (BuildKit and DB must be up before the API can build).
 
 ## Notes
 

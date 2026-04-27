@@ -2,11 +2,31 @@ import { toast } from "sonner"
 import { useEffect, useRef } from "react"
 
 import { useDeploymentLogStream } from "@/hooks/use-deployment-log-stream"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import type { DeploymentLogEntry } from "@/schemas/deployment-log"
 import { cn } from "@/lib/utils"
 
 type Props = {
   deploymentId: string
+}
+
+const STREAM_META: Record<
+  DeploymentLogEntry["stream"],
+  { label: string; title: string }
+> = {
+  stdout: {
+    label: "stdout",
+    title: "Standard output from the build or container process.",
+  },
+  stderr: {
+    label: "stderr",
+    title:
+      "Standard error stream. Many CLIs (npm, cargo, compilers) write normal progress and info here, it is not the same as “your deployment failed”.",
+  },
+  system: {
+    label: "system",
+    title:
+      "Message from the deployment platform (API / pipeline), not from the app’s stdout/stderr.",
+  },
 }
 
 export function LogsViewer({ deploymentId }: Props) {
@@ -14,7 +34,7 @@ export function LogsViewer({ deploymentId }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const isSevereError = (msg: string) =>
     /(error\b|failed\b|panic\b|traceback\b|uncaught|exception\b|exit(ed)? with code)/i.test(
-      msg,
+      msg
     )
 
   useEffect(() => {
@@ -25,23 +45,36 @@ export function LogsViewer({ deploymentId }: Props) {
   }, [connectionState])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    })
   }, [logs.length])
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-zinc-950 dark:bg-zinc-950">
-      <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-3 py-2">
-        <div className="flex items-center gap-1.5">
+    <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden rounded-xl border border-border bg-zinc-950 dark:bg-zinc-950">
+      <div className="flex min-w-0 max-w-full shrink-0 items-center justify-between gap-2 border-b border-white/8 px-3 py-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
           <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
         </div>
-        <span className="font-mono text-[10px] text-white/30">deployment.log</span>
-        <ConnectionBadge state={connectionState} />
+        <span className="min-w-0 flex-1 truncate text-center font-mono text-[10px] text-white/30">
+          deployment.log
+        </span>
+        <div className="shrink-0">
+          <ConnectionBadge state={connectionState} />
+        </div>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-3 font-mono text-xs leading-relaxed">
+      <div
+        className={cn(
+          "min-h-0 min-w-0 max-w-full flex-1 overflow-auto overscroll-x-contain overscroll-y-contain",
+          "touch-pan-x touch-pan-y lg:[scrollbar-gutter:stable]",
+        )}
+      >
+        <div className="min-w-min max-w-none p-3 font-mono text-xs leading-relaxed">
           {logs.length === 0 ? (
             <div className="flex items-center gap-2 text-white/30">
               {connectionState === "connecting" ? (
@@ -60,33 +93,35 @@ export function LogsViewer({ deploymentId }: Props) {
             <ul className="flex flex-col gap-0.5">
               {logs.map((line) => (
                 <li key={line.id} className="group flex gap-2 leading-snug">
-                  <span className="shrink-0 select-none text-[10px] text-white/20 tabular-nums">
+                  <span className="shrink-0 text-[10px] text-white/20 tabular-nums select-none">
                     {formatLogTime(line.createdAt)}
                   </span>
                   <span
+                    title={STREAM_META[line.stream].title}
                     className={cn(
-                      "shrink-0 select-none text-[10px]",
+                      "w-14 shrink-0 cursor-help text-right font-mono text-[9px] leading-none tracking-tight whitespace-nowrap select-none sm:text-[10px]",
                       line.stream === "stderr"
                         ? isSevereError(line.message)
-                          ? "text-red-400/60"
-                          : "text-amber-300/60"
+                          ? "text-red-400/80"
+                          : "text-amber-300/80"
                         : line.stream === "system"
-                          ? "text-sky-400/50"
-                          : "text-white/20",
+                          ? "text-sky-400/70"
+                          : "text-white/35"
                     )}
                   >
-                    {line.stream === "stderr" ? "err" : line.stream === "system" ? "sys" : "out"}
+                    {STREAM_META[line.stream].label}
                   </span>
                   <span
+                    title={line.message}
                     className={cn(
-                      "break-all",
+                      "whitespace-pre-wrap",
                       line.stream === "stderr"
                         ? isSevereError(line.message)
                           ? "text-red-300"
                           : "text-amber-100/90"
                         : line.stream === "system"
                           ? "text-sky-200/70 italic"
-                          : "text-green-200/90",
+                          : "text-green-200/90"
                     )}
                   >
                     {line.message}
@@ -97,7 +132,7 @@ export function LogsViewer({ deploymentId }: Props) {
           )}
           <div ref={bottomRef} />
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }
@@ -119,9 +154,7 @@ function ConnectionBadge({
   return (
     <div className="flex items-center gap-1.5">
       <span
-        className={cn(
-          "relative flex h-1.5 w-1.5 items-center justify-center",
-        )}
+        className={cn("relative flex h-1.5 w-1.5 items-center justify-center")}
       >
         {state === "connecting" && (
           <>

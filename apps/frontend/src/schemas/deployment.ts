@@ -40,8 +40,17 @@ export type CreateGitDeploymentBody = z.infer<
   typeof createGitDeploymentBodySchema
 >
 
+export const createSampleDeploymentBodySchema = z.object({
+  sourceType: z.literal("sample"),
+})
+
+export type CreateSampleDeploymentBody = z.infer<
+  typeof createSampleDeploymentBodySchema
+>
+
 export type CreateDeploymentRequest =
   | CreateGitDeploymentBody
+  | CreateSampleDeploymentBody
   | {
       sourceType: "upload"
       /** One or more files; use folder picker so each file has `webkitRelativePath`. */

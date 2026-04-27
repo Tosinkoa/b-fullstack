@@ -1,10 +1,12 @@
 import { getApiBaseUrl } from "@/lib/api-base"
 import {
   createGitDeploymentBodySchema,
+  createSampleDeploymentBodySchema,
   getDeploymentResponseSchema,
   listDeploymentsResponseSchema,
   type CreateDeploymentRequest,
   type CreateGitDeploymentBody,
+  type CreateSampleDeploymentBody,
   type DeploymentRecord,
 } from "@/schemas/deployment"
 
@@ -25,7 +27,7 @@ export async function listDeployments(): Promise<DeploymentRecord[]> {
     throw new Error(
       typeof json === "object" && json && "error" in json
         ? String((json as { error: unknown }).error)
-        : `Request failed (${res.status})`,
+        : `Request failed (${res.status})`
     )
   }
   const parsed = listDeploymentsResponseSchema.safeParse(json)
@@ -36,12 +38,11 @@ export async function listDeployments(): Promise<DeploymentRecord[]> {
 }
 
 export async function createDeployment(
-  body: CreateDeploymentRequest,
+  body: CreateDeploymentRequest
 ): Promise<DeploymentRecord> {
-  if (body.sourceType === "git") {
-    const payload: CreateGitDeploymentBody = createGitDeploymentBodySchema.parse(
-      body,
-    )
+  if (body.sourceType === "sample") {
+    const payload: CreateSampleDeploymentBody =
+      createSampleDeploymentBodySchema.parse(body)
     const res = await fetch(`${getApiBaseUrl()}/deployments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -52,7 +53,30 @@ export async function createDeployment(
       throw new Error(
         typeof json === "object" && json && "error" in json
           ? JSON.stringify((json as { error: unknown }).error)
-          : `Request failed (${res.status})`,
+          : `Request failed (${res.status})`
+      )
+    }
+    const parsed = getDeploymentResponseSchema.safeParse(json)
+    if (!parsed.success) {
+      throw new Error("Unexpected create deployment response")
+    }
+    return parsed.data.deployment
+  }
+
+  if (body.sourceType === "git") {
+    const payload: CreateGitDeploymentBody =
+      createGitDeploymentBodySchema.parse(body)
+    const res = await fetch(`${getApiBaseUrl()}/deployments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    const json = await parseJson(res)
+    if (!res.ok) {
+      throw new Error(
+        typeof json === "object" && json && "error" in json
+          ? JSON.stringify((json as { error: unknown }).error)
+          : `Request failed (${res.status})`
       )
     }
     const parsed = getDeploymentResponseSchema.safeParse(json)
@@ -83,7 +107,7 @@ export async function createDeployment(
     throw new Error(
       typeof json === "object" && json && "error" in json
         ? String((json as { error: unknown }).error)
-        : `Request failed (${res.status})`,
+        : `Request failed (${res.status})`
     )
   }
   const parsed = getDeploymentResponseSchema.safeParse(json)

@@ -120,11 +120,21 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
-  body {
-    @apply bg-background text-foreground;
-    }
+  }
   html {
-    @apply font-sans;
-    }
+    @apply font-sans overflow-x-clip;
+    /* Avoid 100vw scrollbar gap that shifts layout (e.g. html left < 0) */
+    max-width: 100%;
+  }
+  body {
+    @apply m-0 max-w-full overflow-x-clip bg-background text-foreground;
+  }
+  #root {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    max-width: 100%;
+  }
 }

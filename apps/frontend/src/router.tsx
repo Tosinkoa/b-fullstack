@@ -1,4 +1,9 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router"
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+} from "@tanstack/react-router"
 
 import { DashboardPage } from "@/pages/dashboard-page.tsx"
 

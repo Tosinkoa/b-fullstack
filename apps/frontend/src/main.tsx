@@ -14,9 +14,11 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-        <Toaster richColors position="top-right" />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <RouterProvider router={router} />
+          <Toaster richColors position="top-right" />
+        </div>
       </QueryClientProvider>
     </ThemeProvider>
-  </StrictMode>,
+  </StrictMode>
 )

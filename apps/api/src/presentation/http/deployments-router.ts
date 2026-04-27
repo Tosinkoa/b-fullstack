@@ -18,7 +18,7 @@ import type { Response } from "express";
 import { runFakePipeline } from "../../application/deployments/run-fake-pipeline.js";
 import { extractZipBufferToDir } from "../../infrastructure/uploads/extract-zip-to-dir.js";
 import { writeMulterFilesToDir } from "../../infrastructure/uploads/write-multer-files-to-dir.js";
-import { createGitDeploymentBodySchema } from "./schemas/deployments.js";
+import { createJsonDeploymentBodySchema } from "./schemas/deployments.js";
 
 function getUploadRoot(): string {
   return process.env.UPLOAD_WORKSPACE_ROOT ?? "/var/lib/b-fullstack-uploads";
@@ -190,9 +190,48 @@ export function createDeploymentsRouter(deps: {
     skipUnlessContentType("json"),
     jsonParser,
     async (req, res) => {
-      const parsed = createGitDeploymentBodySchema.safeParse(req.body);
+      const parsed = createJsonDeploymentBodySchema.safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ error: z.treeifyError(parsed.error) });
+        return;
+      }
+
+      if (parsed.data.sourceType === "sample") {
+        const monorepoRoot = deps.sampleAppSourcePath ?? "/repo";
+        const sampleAppBuildPath = path.join(monorepoRoot, "apps", "sample-app");
+        const deployment = await deps.deploymentsRepo.create({
+          sourceType: "upload",
+          sourceUrl: "sample-app (bundled)",
+        });
+
+        const log = await deps.deploymentLogsRepo.append({
+          deploymentId: deployment.id,
+          stream: "system",
+          message: "Deployment created.",
+        });
+        deps.deploymentLogLive.publish(deployment.id, log);
+
+        const next = await deps.deploymentLogsRepo.append({
+          deploymentId: deployment.id,
+          stream: "system",
+          message: `Bundled demo: Railpack builds from ${sampleAppBuildPath} only (small context, auto-detected install/build, not the full monorepo).`,
+        });
+        deps.deploymentLogLive.publish(deployment.id, next);
+
+        void runFakePipeline({
+          deploymentId: deployment.id,
+          deploymentsRepo: deps.deploymentsRepo,
+          deploymentLogsRepo: deps.deploymentLogsRepo,
+          deploymentLogLive: deps.deploymentLogLive,
+          ingressManager: deps.ingressManager,
+          containerRuntime: deps.containerRuntime,
+          imageBuilder: deps.imageBuilder,
+          buildSourcePath: sampleAppBuildPath,
+          sampleAppSourcePath: deps.sampleAppSourcePath,
+          dockerNetwork: deps.dockerNetwork,
+        });
+
+        res.status(201).json({ deployment });
         return;
       }
 

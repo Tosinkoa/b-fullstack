@@ -11,6 +11,7 @@ import {
   IconFileZip,
   IconCheck,
   IconLoader2,
+  IconRocket,
 } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
@@ -25,11 +26,14 @@ import { Input } from "@/components/ui/input"
 import { createGitDeploymentBodySchema } from "@/schemas/deployment"
 import type { CreateDeploymentRequest } from "@/schemas/deployment"
 import {
-  type UploadProfileId,
+  type StackPickerId,
+  STACK_PICKER_ORDER,
   UPLOAD_PROFILES,
   assertUnderUploadLimit,
   filterFilesForUpload,
   formatBytes,
+  uploadProfileFromStackPicker,
+  type UploadProfileId,
 } from "@/lib/filter-upload-files"
 import { cn } from "@/lib/utils"
 
@@ -64,12 +68,22 @@ const STACK_META: Record<
   other: { icon: IconCode, label: "Other" },
 }
 
+function stackPickerDisplay(id: StackPickerId): {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+} {
+  if (id === "sample-app") {
+    return { icon: IconRocket, label: "Sample app" }
+  }
+  return STACK_META[id]
+}
+
 export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
   const folderInputId = useId()
   const zipInputId = useId()
-  const [mode, setMode] = useState<"git" | "upload">("git")
+  const [mode, setMode] = useState<"git" | "upload">("upload")
   const [gitUrl, setGitUrl] = useState("")
-  const [uploadProfile, setUploadProfile] = useState<UploadProfileId>("node")
+  const [stackPicker, setStackPicker] = useState<StackPickerId>("sample-app")
   const [folderFiles, setFolderFiles] = useState<FileList | null>(null)
   const [zipFile, setZipFile] = useState<File | null>(null)
 
@@ -82,7 +96,9 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
       })
       if (!parsed.success) {
         toast.error("Invalid Git URL", {
-          description: parsed.error.issues.map((i) => i.message).join(" ") || "Enter a valid URL",
+          description:
+            parsed.error.issues.map((i) => i.message).join(" ") ||
+            "Enter a valid URL",
         })
         return
       }
@@ -90,20 +106,29 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
       return
     }
 
+    if (
+      stackPicker === "sample-app" &&
+      (!folderFiles || folderFiles.length === 0) &&
+      !zipFile
+    ) {
+      onSubmit({ sourceType: "sample" })
+      return
+    }
+
     if (folderFiles && folderFiles.length > 0) {
-      const { kept, skippedCount, skippedBytes, originalCount } = filterFilesForUpload(
-        Array.from(folderFiles),
-        uploadProfile,
-      )
+      const profile = uploadProfileFromStackPicker(stackPicker)
+      const { kept, skippedCount, skippedBytes, originalCount } =
+        filterFilesForUpload(Array.from(folderFiles), profile)
       if (kept.length === 0) {
         toast.error("Nothing left to upload", {
-          description: 'All files were skipped. Try "Other" or a different folder.',
+          description:
+            'All files were skipped. Try "Other" or a different folder.',
         })
         return
       }
       if (skippedCount > 0) {
         toast.message("Upload trimmed", {
-          description: `Skipped ${skippedCount} of ${originalCount} files (~${formatBytes(skippedBytes)}) — node_modules, .git, build output.`,
+          description: `Skipped ${skippedCount} of ${originalCount} files (~${formatBytes(skippedBytes)}), node_modules, .git, build output.`,
         })
       }
       const limit = assertUnderUploadLimit(kept)
@@ -113,7 +138,10 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
         })
         return
       }
-      onSubmit({ sourceType: "upload", upload: { kind: "folder", files: kept } })
+      onSubmit({
+        sourceType: "upload",
+        upload: { kind: "folder", files: kept },
+      })
       return
     }
     if (zipFile) {
@@ -121,19 +149,24 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
       return
     }
 
-    toast.error("Select a folder or .zip to upload")
+    toast.error("Select a folder or .zip to upload", {
+      description:
+        stackPicker !== "sample-app"
+          ? 'Or choose "Sample app" above and Deploy without files for the bundled demo.'
+          : undefined,
+    })
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Card>
+    <form onSubmit={handleSubmit} className="min-w-0">
+      <Card className="min-w-0">
         <CardHeader className="pb-2">
           <CardTitle>New deployment</CardTitle>
         </CardHeader>
 
-        <CardContent className="flex flex-col gap-5">
-          {/* ── Source type picker ── */}
-          <div className="grid grid-cols-2 gap-3">
+        <CardContent className="flex min-w-0 flex-col gap-5">
+          {/* ── Source type picker: stack on narrow viewports, row on sm+ ── */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {SOURCE_OPTIONS.map((opt) => {
               const Icon = opt.icon
               const active = mode === opt.id
@@ -144,11 +177,11 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                   aria-pressed={active}
                   onClick={() => setMode(opt.id)}
                   className={cn(
-                    "relative flex flex-col items-center gap-2 rounded-xl border-2 px-3 py-4 text-center transition-all duration-150 outline-none",
+                    "relative flex w-full flex-col items-center gap-2 rounded-xl border-2 px-3 py-4 text-center transition-all duration-150 outline-none",
                     "focus-visible:ring-2 focus-visible:ring-ring/60",
                     active
                       ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border hover:border-border/80 hover:bg-muted/40",
+                      : "border-border hover:border-border/80 hover:bg-muted/40"
                   )}
                 >
                   {active && (
@@ -159,14 +192,21 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                   <Icon
                     className={cn(
                       "h-7 w-7 transition-colors",
-                      active ? "text-primary" : "text-muted-foreground",
+                      active ? "text-primary" : "text-muted-foreground"
                     )}
                   />
                   <div>
-                    <p className={cn("text-sm font-semibold", active && "text-primary")}>
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        active && "text-primary"
+                      )}
+                    >
                       {opt.label}
                     </p>
-                    <p className="text-[11px] text-muted-foreground leading-tight">{opt.desc}</p>
+                    <p className="text-[11px] leading-tight text-muted-foreground">
+                      {opt.desc}
+                    </p>
                   </div>
                 </button>
               )
@@ -175,15 +215,20 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
 
           {/* ── Git URL input ── */}
           {mode === "git" && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="gitUrl">
+            <div className="flex w-full min-w-0 flex-col gap-1.5">
+              <label
+                className="text-xs font-medium text-muted-foreground"
+                htmlFor="gitUrl"
+              >
                 Repository URL
               </label>
               <Input
                 id="gitUrl"
                 name="gitUrl"
+                className="max-w-full min-w-0 overflow-x-auto font-mono text-xs md:text-sm"
                 onChange={(ev) => setGitUrl(ev.target.value)}
                 placeholder="https://github.com/org/repo.git"
+                spellCheck={false}
                 type="url"
                 value={gitUrl}
               />
@@ -195,35 +240,37 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
             <div className="flex flex-col gap-4">
               {/* Stack picker */}
               <div className="flex flex-col gap-2">
-                <p className="text-xs font-medium text-muted-foreground">Stack</p>
-                <div className="grid grid-cols-5 gap-2">
-                  {UPLOAD_PROFILES.map((p) => {
-                    const { icon: Icon, label } = STACK_META[p.id]
-                    const active = uploadProfile === p.id
+                <p className="text-xs font-medium text-muted-foreground">
+                  Stack / upload filter
+                </p>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  {STACK_PICKER_ORDER.map((id) => {
+                    const { icon: Icon, label } = stackPickerDisplay(id)
+                    const active = stackPicker === id
                     return (
                       <button
-                        key={p.id}
+                        key={id}
                         type="button"
                         aria-pressed={active}
-                        onClick={() => setUploadProfile(p.id)}
+                        onClick={() => setStackPicker(id)}
                         className={cn(
-                          "flex flex-col items-center gap-1.5 rounded-lg border py-2.5 px-1 text-center transition-all outline-none",
+                          "flex flex-col items-center gap-1.5 rounded-lg border px-1 py-2.5 text-center transition-all outline-none",
                           "focus-visible:ring-2 focus-visible:ring-ring/60",
                           active
                             ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                            : "border-border hover:bg-muted/60",
+                            : "border-border hover:bg-muted/60"
                         )}
                       >
                         <Icon
                           className={cn(
                             "h-5 w-5 transition-colors",
-                            active ? "text-primary" : "text-muted-foreground",
+                            active ? "text-primary" : "text-muted-foreground"
                           )}
                         />
                         <span
                           className={cn(
-                            "text-[10px] font-medium leading-none",
-                            active ? "text-primary" : "text-muted-foreground",
+                            "text-[10px] leading-none font-medium",
+                            active ? "text-primary" : "text-muted-foreground"
                           )}
                         >
                           {label}
@@ -232,6 +279,23 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                     )
                   })}
                 </div>
+                {stackPicker === "sample-app" ? (
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Press{" "}
+                    <strong className="font-medium text-foreground/90">
+                      Deploy
+                    </strong>{" "}
+                    with no folder or zip for the bundled demo (API runs
+                    Railpack on{" "}
+                    <span className="font-mono">apps/sample-app</span> only,
+                    small build context). Or select that folder / a zip
+                    yourself.
+                  </p>
+                ) : (
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    {UPLOAD_PROFILES.find((p) => p.id === stackPicker)?.hint}
+                  </p>
+                )}
               </div>
 
               {/* File upload areas */}
@@ -244,7 +308,7 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                     "hover:bg-muted/40 active:scale-[0.98]",
                     folderFiles && folderFiles.length > 0
                       ? "border-primary bg-primary/5"
-                      : "border-border",
+                      : "border-border"
                   )}
                 >
                   <IconFolderUp
@@ -252,7 +316,7 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                       "h-7 w-7 transition-colors",
                       folderFiles && folderFiles.length > 0
                         ? "text-primary"
-                        : "text-muted-foreground group-hover:text-foreground/60",
+                        : "text-muted-foreground group-hover:text-foreground/60"
                     )}
                   />
                   <div>
@@ -261,7 +325,9 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                         ? `${folderFiles.length} files selected`
                         : "Choose folder"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">webkitdirectory</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      webkitdirectory
+                    </p>
                   </div>
                   <input
                     className="sr-only"
@@ -270,9 +336,12 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                     type="file"
                     onChange={(ev) => {
                       setFolderFiles(ev.target.files)
-                      if (ev.target.files && ev.target.files.length > 0) setZipFile(null)
+                      if (ev.target.files && ev.target.files.length > 0)
+                        setZipFile(null)
                     }}
-                    {...({ webkitdirectory: "true" } as ComponentProps<"input">)}
+                    {...({
+                      webkitdirectory: "true",
+                    } as ComponentProps<"input">)}
                   />
                 </label>
 
@@ -282,7 +351,7 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                   className={cn(
                     "group flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-3 py-5 text-center transition-all",
                     "hover:bg-muted/40 active:scale-[0.98]",
-                    zipFile ? "border-primary bg-primary/5" : "border-border",
+                    zipFile ? "border-primary bg-primary/5" : "border-border"
                   )}
                 >
                   <IconFileZip
@@ -290,14 +359,19 @@ export function CreateDeploymentForm({ disabled, onSubmit }: Props) {
                       "h-7 w-7 transition-colors",
                       zipFile
                         ? "text-primary"
-                        : "text-muted-foreground group-hover:text-foreground/60",
+                        : "text-muted-foreground group-hover:text-foreground/60"
                     )}
                   />
                   <div>
-                    <p className="text-xs font-semibold">
+                    <p
+                      className="max-w-full truncate px-1 text-xs font-semibold"
+                      title={zipFile?.name}
+                    >
                       {zipFile ? zipFile.name : "Choose .zip"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">25 MB limit</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      25 MB limit
+                    </p>
                   </div>
                   <Input
                     accept=".zip,application/zip"

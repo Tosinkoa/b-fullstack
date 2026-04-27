@@ -5,6 +5,15 @@
 
 export type UploadProfileId = "node" | "python" | "go" | "static" | "other"
 
+/** UI-only preset; uses the same path filters as `node` (for `apps/sample-app`–style trees). */
+export type StackPickerId = "sample-app" | UploadProfileId
+
+export function uploadProfileFromStackPicker(
+  id: StackPickerId
+): UploadProfileId {
+  return id === "sample-app" ? "node" : id
+}
+
 export const UPLOAD_PROFILES: {
   id: UploadProfileId
   label: string
@@ -35,6 +44,11 @@ export const UPLOAD_PROFILES: {
     label: "Other",
     hint: "Only generic junk (node_modules, .git, dist, …) is removed.",
   },
+]
+
+export const STACK_PICKER_ORDER: StackPickerId[] = [
+  "sample-app",
+  ...UPLOAD_PROFILES.map((p) => p.id),
 ]
 
 /** Path components we never need in a source upload (heavy or reproduceable). */
@@ -77,9 +91,15 @@ function normalizeRelPath(f: File): string {
   return rel.replaceAll("\\", "/")
 }
 
-function shouldSkipPath(relativePath: string, profile: UploadProfileId): boolean {
+function shouldSkipPath(
+  relativePath: string,
+  profile: UploadProfileId
+): boolean {
   const segments = relativePath.split("/").filter(Boolean)
-  const deny = new Set([...BASE_DENY_SEGMENTS, ...PROFILE_EXTRA_SEGMENTS[profile]])
+  const deny = new Set([
+    ...BASE_DENY_SEGMENTS,
+    ...PROFILE_EXTRA_SEGMENTS[profile],
+  ])
 
   for (const seg of segments) {
     if (deny.has(seg)) return true
@@ -101,7 +121,7 @@ export type FilterUploadFilesResult = {
  */
 export function filterFilesForUpload(
   files: File[],
-  profile: UploadProfileId,
+  profile: UploadProfileId
 ): FilterUploadFilesResult {
   const kept: File[] = []
   let skippedCount = 0
@@ -131,7 +151,9 @@ export function totalFileBytes(files: File[]): number {
   return files.reduce((s, f) => s + f.size, 0)
 }
 
-export function assertUnderUploadLimit(files: File[]): { ok: true } | { ok: false; total: number } {
+export function assertUnderUploadLimit(
+  files: File[]
+): { ok: true } | { ok: false; total: number } {
   const total = totalFileBytes(files)
   if (total > MAX_BYTES) {
     return { ok: false, total }

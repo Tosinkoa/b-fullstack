@@ -9,7 +9,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // Dev: API on the host. Preview (e.g. in Docker): API service on the compose network.
 // `docker-compose.yml` sets `PREVIEW_PROXY_TARGET=http://api:3000` for the frontend service.
 const devApiProxy = process.env.DEV_API_PROXY_TARGET ?? "http://127.0.0.1:3000"
-const previewApiProxy = process.env.PREVIEW_PROXY_TARGET ?? "http://127.0.0.1:3000"
+const previewApiProxy =
+  process.env.PREVIEW_PROXY_TARGET ?? "http://127.0.0.1:3000"
 
 // https://vite.dev/config/
 export default defineConfig({
