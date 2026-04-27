@@ -1,0 +1,93 @@
+name: b-fullstack
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: brimble_takehome
+    volumes:
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d brimble_takehome"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      PORT: "3000"
+      DATABASE_URL: postgres://postgres:postgres@db:5432/brimble_takehome
+      # For local demo only (security trade-off): lets API run `docker` commands.
+      DOCKER_HOST: unix:///var/run/docker.sock
+      CADDY_ADMIN_URL: http://caddy:2019
+      # Matches adapted JSON server id for `:80` in infra/caddy/Caddyfile (usually srv0).
+      CADDY_HTTP_SERVER_ID: srv0
+      # Lets the API start per-deployment containers on the same network as Caddy.
+      DOCKER_NETWORK: b-fullstack_default
+      # Railpack requires a BuildKit daemon.
+      BUILDKIT_HOST: docker-container://buildkit
+      # Monorepo defaults: build/start only the demo workspace package.
+      RAILPACK_BUILD_CMD: yarn workspace @app/sample-app build
+      RAILPACK_START_CMD: yarn workspace @app/sample-app start
+      # Test helper: set to 1 to force pipeline failure.
+      FORCE_PIPELINE_FAIL: ${FORCE_PIPELINE_FAIL:-0}
+      UPLOAD_WORKSPACE_ROOT: /var/lib/b-fullstack-uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      buildkit:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    restart: on-failure
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - uploads_data:/var/lib/b-fullstack-uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    environment:
+      VITE_API_BASE_URL: /api
+      # Browser hits :4173/api/…; vite preview must forward to the API container (not 127.0.0.1).
+      PREVIEW_PROXY_TARGET: http://api:3000
+    ports:
+      - "4173:4173"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.11.2
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+
+  buildkit:
+    image: moby/buildkit:latest
+    container_name: buildkit
+    privileged: true
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  uploads_data:

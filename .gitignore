@@ -1,0 +1,31 @@
+Project.md
+Main-Project-Plan.md
+
+# Dependencies
+**/node_modules/
+
+# Env / secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Builds / outputs
+**/dist/
+**/build/
+**/.vite/
+**/.turbo/
+**/.cache/
+**/coverage/
+
+# Logs / temp
+**/*.log
+**/tmp/
+
+# Local API dev (uploads when running `yarn workspace @app/api dev`)
+apps/api/.data/
+
+# Editor / OS
+**/.DS_Store
+**/Thumbs.db
+**/.vscode/
+**/.idea/

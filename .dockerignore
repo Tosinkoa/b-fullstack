@@ -1,0 +1,29 @@
+# Git / editor
+**/.git
+**/.gitignore
+**/.cursor
+**/.vscode
+**/.idea
+
+# Dependencies / build outputs (never ship these in the Docker build context)
+**/node_modules
+**/.vite
+**/dist
+**/build
+**/.turbo
+**/.cache
+**/coverage
+**/.eslintcache
+
+# Local env / secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# OS junk
+**/.DS_Store
+**/Thumbs.db
+
+# Logs / temp
+**/*.log
+**/tmp

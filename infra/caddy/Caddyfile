@@ -1,0 +1,24 @@
+{
+  # Expose the admin endpoint to the compose network.
+  # NOTE: this is for local demo only; do not expose it publicly.
+  admin 0.0.0.0:2019 {
+    # Allow the API container to call the Admin API from within the compose network.
+    origins api:3000 caddy:2019 localhost:2019 127.0.0.1:2019
+    enforce_origin
+  }
+}
+
+:80 {
+  encode gzip
+
+  # API
+  handle /api/* {
+    reverse_proxy api:3000
+  }
+
+  # Frontend (built static SPA, served by vite preview in container)
+  handle {
+    reverse_proxy frontend:4173
+  }
+}
+

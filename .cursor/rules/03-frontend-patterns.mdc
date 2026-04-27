@@ -1,0 +1,18 @@
+---
+description: Frontend conventions for Vite + TanStack Router/Query + shadcn/ui (apply always)
+alwaysApply: true
+---
+
+## Frontend patterns
+
+- Keep UI **one page**; don’t add extra routes unless required.
+- Frontend is a **static SPA**: use `vite build` and serve the built assets behind **Caddy**.
+  - Ensure **SPA fallback** (serve `index.html`) so refresh/deep links don’t 404.
+- Use **Zod** on the frontend for form validation and parsing API/SSE payloads.
+- Use TanStack Query for request/response data; **SSE logs are a stream** and should be managed separately.
+- Components:
+  - Prefer small, reusable components (`DeploymentList`, `CreateDeploymentForm`, `LogsViewer`).
+  - Avoid prop-drilling for cross-cutting state; prefer hooks/stores.
+- shadcn/ui is allowed and recommended: aim for a **clean, good-looking UI** while staying time-boxed.
+  - Use a small set of components (inputs, buttons, cards, badges, scroll areas).
+  - Avoid heavy theming; prioritize shipping pipeline + SSE logs first.

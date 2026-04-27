@@ -1,0 +1,31 @@
+---
+description: Core clean-code and repo conventions (apply always)
+alwaysApply: true
+---
+
+## Core standards
+
+- Prefer **clarity over cleverness**; optimize for reading in 6 months.
+- Keep functions small; extract helpers when a function has multiple responsibilities.
+- No dead code, no commented-out code, no TODOs without an owner/timebox.
+- Use consistent naming: `camelCase` vars/functions, `PascalCase` types/classes, `kebab-case` files.
+- Package management: use **Yarn** for Node projects; commit `yarn.lock`; do not add `package-lock.json`.
+- Dependency versions: use **latest stable** versions unless another package requires a specific version range.
+- Don’t hardcode tooling or versions in files when commands exist:
+  - Create projects via `yarn init` / scaffolding commands (don’t hand-write `package.json` from scratch).
+  - Add dependencies via `yarn add` / `yarn add -D` (don’t manually edit dependency versions).
+  - Avoid pinning exact versions unless required; let Yarn resolve **latest stable** and capture it in `yarn.lock`.
+  - Add shadcn/ui components via the shadcn generator command (don’t copy/paste component source by hand).
+  - Prefer official setup commands for tooling (linters/formatters/test runners) instead of manual config copy/paste.
+  - Prefer migrations/generators for schema/config where available; don’t hand-edit large generated files unless necessary.
+  - Don’t hardcode environment-specific values in code; use compose defaults + env vars + `.env.example`.
+- Validate all external inputs at the boundary (HTTP handlers).
+  - With **Zod v4**, prefer the **canonical/top-level schema APIs** (e.g. `z.uuid()`, `z.email()`, `z.url()`, …) over deprecated **`z.string().<thing>()`** helpers; if TypeScript flags deprecation, follow the suggested replacement from Zod’s typings/docs.
+  - For Zod errors, prefer **`z.treeifyError(err)`** (avoid deprecated `err.flatten()` / similar legacy shapes).
+- Errors must be actionable: include context, never swallow exceptions silently.
+- Prefer dependency injection over global singletons for testability.
+- Resource safety (avoid leaks):
+  - Always clean up **SSE connections** on client disconnect.
+  - Always terminate/cleanup **child processes** (Railpack) on error/cancel/timeout.
+  - Never keep unbounded in-memory arrays of logs; persist to DB and stream incrementally.
+  - Prefer timeouts for external calls (git clone, build, docker operations).

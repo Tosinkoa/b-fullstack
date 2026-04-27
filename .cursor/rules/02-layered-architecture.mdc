@@ -1,0 +1,30 @@
+---
+description: Enforce layered architecture boundaries for the API (apply always)
+alwaysApply: true
+---
+
+## Layered architecture (API)
+
+- **presentation**: HTTP only (Express routes/controllers). No DB/Docker/Caddy calls here.
+- **application**: orchestrates use-cases; depends on ports/interfaces, not concrete infra.
+- **domain**: pure business rules + types (e.g. allowed status transitions). No IO.
+- **infrastructure**: concrete adapters used by the **backend API** (Postgres repos, **Docker client**, Railpack runner, Caddy client).
+
+## What “Docker client” means (backend only)
+
+The backend needs to:
+- build images (via Railpack CLI),
+- run containers (via Docker),
+- inspect/stop containers.
+
+So the API has an infrastructure adapter that talks to the **Docker Engine** (e.g. via the Docker socket). 
+
+## Dependency direction
+
+`presentation → application → domain`
+
+Infrastructure is injected into application via interfaces (ports).
+
+## Rule of thumb
+
+If it touches the network/filesystem/processes, it belongs in **infrastructure**.

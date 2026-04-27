@@ -1,0 +1,15 @@
+{
+  "name": "b-fullstack",
+  "private": true,
+  "packageManager": "yarn@4.11.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "docker compose up --build",
+    "down": "docker compose down -v",
+    "frontend:dev": "yarn workspace @app/frontend dev",
+    "api:dev": "yarn workspace @app/api dev",
+    "test:api": "yarn workspace @app/api test"
+  }
+}
