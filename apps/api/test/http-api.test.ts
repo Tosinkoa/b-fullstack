@@ -9,12 +9,16 @@ import type {
   DeploymentLogsRepository,
 } from "../src/application/ports/deployment-logs-repository.js";
 import type {
+  CreateDeploymentInput,
   DeploymentRecord,
   DeploymentsRepository,
   DeploymentStatus,
 } from "../src/application/ports/deployments-repository.js";
 import type { IngressManager } from "../src/application/ports/ingress-manager.js";
-import type { ContainerRuntime } from "../src/application/ports/container-runtime.js";
+import type {
+  ContainerRuntime,
+  RunContainerResult,
+} from "../src/application/ports/container-runtime.js";
 
 function createTestServer() {
   const deploymentsRepo = new InMemoryDeploymentsRepository();
@@ -165,10 +169,7 @@ describe("HTTP API (in-memory repos)", () => {
 class InMemoryDeploymentsRepository implements DeploymentsRepository {
   private readonly byId = new Map<string, DeploymentRecord>();
 
-  async create(input: {
-    sourceType: "git";
-    sourceUrl: string;
-  }): Promise<DeploymentRecord> {
+  async create(input: CreateDeploymentInput): Promise<DeploymentRecord> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const rec: DeploymentRecord = {
@@ -204,10 +205,12 @@ class InMemoryDeploymentsRepository implements DeploymentsRepository {
     routePath?: string | null;
     liveUrl?: string | null;
     lastError?: string | null;
-  }): Promise<void> {
+  }): Promise<DeploymentRecord> {
     const existing = this.byId.get(input.id);
-    if (!existing) return;
-    this.byId.set(input.id, {
+    if (!existing) {
+      throw new Error("Failed to update deployment");
+    }
+    const next: DeploymentRecord = {
       ...existing,
       ...(input.status !== undefined ? { status: input.status } : {}),
       ...(input.imageTag !== undefined ? { imageTag: input.imageTag } : {}),
@@ -215,7 +218,9 @@ class InMemoryDeploymentsRepository implements DeploymentsRepository {
       ...(input.liveUrl !== undefined ? { liveUrl: input.liveUrl } : {}),
       ...(input.lastError !== undefined ? { lastError: input.lastError } : {}),
       updatedAt: new Date().toISOString(),
-    });
+    };
+    this.byId.set(input.id, next);
+    return next;
   }
 }
 
@@ -245,11 +250,21 @@ class InMemoryDeploymentLogsRepository implements DeploymentLogsRepository {
 
 class NoopIngressManager implements IngressManager {
   async upsertPathRoute(): Promise<void> {}
+  async upsertHostRoute(): Promise<void> {}
   async removeRoute(): Promise<void> {}
 }
 
 class NoopContainerRuntime implements ContainerRuntime {
   async stopAndRemove(): Promise<void> {}
-  async runDetached(): Promise<void> {}
+
+  async runDetached(input: {
+    containerName: string;
+    image: string;
+    network?: string;
+    env?: Record<string, string>;
+    args?: string[];
+  }): Promise<RunContainerResult> {
+    return { containerName: input.containerName };
+  }
 }
 
